@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Warranty Labor Rate ROI Calculator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 30px;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1, h2 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      margin-bottom: 40px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background-color: #f0f4f8;
+      font-weight: 600;
+    }
+    input[type="number"] {
+      padding: 6px 10px;
+      background-color: #dbeeff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 100%;
+      max-width: 100px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    input[readonly], .readonly {
+      background-color: #f5f5f5;
+      color: #444;
+      border: none;
+      font-weight: 500;
+    }
+    #summary_sentence {
+      font-style: italic;
+      font-size: 14px;
+      background: #fdfdfd;
+      border-left: 4px solid #3498db;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Warranty Labor Rate ROI Calculator</h1>
+
+<table>
+  <tr>
+    <td>Customer Pay Labor Rate:</td>
+    <td><input type="number" id="cp_rate" placeholder="0.00"></td>
+  </tr>
+  <tr>
+    <td>Warranty Labor Rate:</td>
+    <td><input type="number" id="warranty_rate" placeholder="0.00"></td>
+  </tr>
+  <tr>
+    <td>If Your Labor Rate was within $5 of your Customer Pay Labor Rate, it would be:</td>
+    <td><input type="text" id="target_rate" class="readonly" readonly style="background-color: transparent;"></td>
+  </tr>
+  <tr>
+    <td>Have you already prepared a warranty labor rate increase and determined the rate you plan to apply for? If so, what rate are you thinking of applying for?</td>
+    <td><input type="number" id="planned_rate" placeholder="0.00"></td>
+  </tr>
+</table>
+
+<h2>Warranty Hours & Gross Profit %</h2>
+<script>
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-US', { month: 'long' });
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1);
+  const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2);
+  const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3);
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('month1').innerText = formatter.format(lastMonth);
+    document.getElementById('month2').innerText = formatter.format(twoMonthsAgo);
+    document.getElementById('month3').innerText = formatter.format(threeMonthsAgo);
+  });
+</script>
+<table>
+  <tr>
+    <th>Month</th>
+    <th>Warranty Hours</th>
+    <th>Gross Profit %</th>
+  </tr>
+  <tr>
+    <td id="month1"></td>
+    <td><input type="number" id="june_hours" placeholder="0.00"></td>
+    <td><input type="number" id="june_gp" placeholder="0.00"></td>
+  </tr>
+  <tr>
+    <td id="month2"></td>
+    <td><input type="number" id="may_hours" placeholder="0.00"></td>
+    <td><input type="number" id="may_gp" placeholder="0.00"></td>
+  </tr>
+  <tr>
+    <td id="month3"></td>
+    <td><input type="number" id="april_hours" placeholder="0.00"></td>
+    <td><input type="number" id="april_gp" placeholder="0.00"></td>
+  </tr>
+  <tr>
+    <td>Total Last Year</td>
+    <td><input type="number" id="year_hours" placeholder="0.00"></td>
+    <td><input type="number" id="year_gp" placeholder="0.00"></td>
+  </tr>
+</table>
+<div id="summary_sentence" style="font-style: normal; font-size: 15px; background: #eef6ff; padding: 12px; border-radius: 6px; line-height: 1.5; font-weight: 500; border-left: 5px solid #3498db;"></div>
+
+<h2>Your Current Warranty Labor Rate Produced Your Service Department:</h2>
+<table>
+  <tr><td>Gross Profit (Past 3 Months):</td><td id="profit_3_months"></td></tr>
+  <tr><td>Gross Profit (Past Year):</td><td id="profit_year"></td></tr>
+  <tr><td>Avg. Gross Profit per Month (Past Year):</td><td id="avg_monthly_profit"></td></tr>
+</table>
+
+<h2>If Your Labor Rate was within $5 of your Customer Pay Labor Rate, the financial impact would be:</h2>
+<table>
+  <tr><td>Additional Gross Profit Generated over the last 3 months:</td><td id="target_profit_3_diff"></td></tr>
+  <tr><td>Average Gross Profit Increase Per Month:</td><td id="target_avg_monthly_profit"></td></tr>
+  <tr><td>Additional Gross Generated over the Past Year:</td><td id="target_profit_year_diff"></td></tr>
+</table>
+
+<h2>If You Applied for Your Custom Warranty Labor Rate, the financial impact would be:</h2>
+<table>
+  <tr><td>Additional Gross Profit Generated over the last 3 months:</td><td id="planned_profit_3_months"></td></tr>
+  <tr><td>Average Gross Profit Increase Per Month:</td><td id="planned_avg_monthly_profit"></td></tr>
+  <tr><td>Additional Gross Generated over the Past Year:</td><td id="planned_profit_year"></td></tr>
+</table>
+
+  
+
+  <script>
+    // Calculation Logic
+    function calculate() {
+      const cpRate = parseFloat(document.getElementById('cp_rate').value) || 0;
+      const warrantyRate = parseFloat(document.getElementById('warranty_rate').value) || 0;
+      const targetRate = Math.max(cpRate - 5, 0);
+      document.getElementById('target_rate').value = targetRate.toFixed(2);
+
+      const plannedRate = parseFloat(document.getElementById('planned_rate').value) || 0;
+
+      const june = parseFloat(document.getElementById('june_hours').value) || 0;
+      const may = parseFloat(document.getElementById('may_hours').value) || 0;
+      const april = parseFloat(document.getElementById('april_hours').value) || 0;
+      const yearHours = parseFloat(document.getElementById('year_hours').value) || 0;
+
+      const juneGP = parseFloat(document.getElementById('june_gp').value) || 0;
+      const mayGP = parseFloat(document.getElementById('may_gp').value) || 0;
+      const aprilGP = parseFloat(document.getElementById('april_gp').value) || 0;
+      const yearGP = parseFloat(document.getElementById('year_gp').value) || 0;
+
+      const hours3 = june + may + april;
+      const gp3 = ((june * juneGP) + (may * mayGP) + (april * aprilGP)) / hours3 || 0;
+      const gpYear = (yearHours * yearGP) || 0;
+      const avgMonthlyYear = yearHours / 12 || 0;
+
+      const profit3 = hours3 * warrantyRate * (gp3 / 100);
+      const profitYear = yearHours * warrantyRate * (yearGP / 100);
+      const avgMonthlyProfit = profitYear / 12;
+
+      document.getElementById('profit_3_months').innerText = "$" + profit3.toFixed(0);
+      document.getElementById('profit_year').innerText = "$" + profitYear.toFixed(0);
+      document.getElementById('avg_monthly_profit').innerText = "$" + avgMonthlyProfit.toFixed(0);
+
+      const target3 = hours3 * targetRate * (gp3 / 100);
+      const targetYear = yearHours * targetRate * (yearGP / 100);
+      const targetDiff3 = target3 - profit3;
+      const targetDiffYear = targetYear - profitYear;
+      const targetAvg = targetDiffYear / 12;
+
+      document.getElementById('target_profit_3_diff').innerText = "$" + targetDiff3.toFixed(0);
+      document.getElementById('target_avg_monthly_profit').innerText = "$" + targetAvg.toFixed(0);
+      document.getElementById('target_profit_year_diff').innerText = "$" + targetDiffYear.toFixed(0);
+
+      const planned3 = hours3 * plannedRate * (gp3 / 100);
+      const plannedYear = yearHours * plannedRate * (yearGP / 100);
+      const plannedDiff3 = planned3 - profit3;
+      const plannedDiffYear = plannedYear - profitYear;
+      const plannedAvg = plannedDiffYear / 12;
+
+      document.getElementById('planned_profit_3_months').innerText = "$" + plannedDiff3.toFixed(0);
+      document.getElementById('planned_avg_monthly_profit').innerText = "$" + plannedAvg.toFixed(0);
+      document.getElementById('planned_profit_year').innerText = "$" + plannedDiffYear.toFixed(0);
+
+      const summary = `Over the past 3 months, you averaged ${ (hours3/3).toFixed(0) } hours per month, for a total of ${ hours3.toFixed(0) } hours. Last year’s average was ${ avgMonthlyYear.toFixed(0) } hours per month.`;
+      document.getElementById('summary_sentence').innerText = summary;
+    }
+
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('input', calculate);
+    });
+
+</script>
+<div style="margin-top: 40px; display: flex; gap: 10px;">
+  <button onclick="window.print()">🖨️ Print This Page</button>
+  <button onclick="exportToExcel()">📥 Export to Excel</button>
+  <button onclick="exportToPDF()">📄 Export to PDF</button>
+</div>
+
+<script>
+function exportToExcel() {
+  const tables = document.querySelectorAll("table");
+  let html = '';
+  tables.forEach(table => {
+    html += table.outerHTML + '<br>';
+  });
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Warranty_ROI_Calculator.xls';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+function exportToPDF() {
+  const printWindow = window.open('', '', 'width=800,height=600');
+  printWindow.document.write('<html><head><title>Warranty ROI Calculator</title>');
+  printWindow.document.write('<style>body{font-family:Segoe UI,Tahoma,Geneva,Verdana,sans-serif;padding:30px;}table{width:100%;border-collapse:collapse;margin-bottom:20px;}th,td{padding:8px;border:1px solid #ccc;text-align:left;}input{border:none;}</style>');
+  printWindow.document.write('</head><body >');
+  printWindow.document.write(document.body.innerHTML);
+  printWindow.document.write('</body></html>');
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  printWindow.close();
+}
+</script>
+</body>
+</html>
